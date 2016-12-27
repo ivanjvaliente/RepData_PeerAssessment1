@@ -1,0 +1,178 @@
+---
+title: "Reproducible Research Project 1"
+author: "ivan valiente"
+date: "27 décembre 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Download and reading and preprocessing the project data set
+The data for this assignment can be downloaded from the course web site: <http://rmarkdown.rstudio.comhttps://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip>.
+
+The following code chunk checks the presence of the project's folder in the current work
+directory. If the folder doesn't exist, I create it, download the zip file and unzip it.
+
+The data-set is stored in a comma-separated-value (CSV).
+I read the file with read.csv, and stored it in "activity_data" data frame.
+
+```{r}
+
+if(!file.exists("./project_1_data")){
+    dir.create("./project_1_data")
+    fileUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+
+    download.file(fileUrl, 
+                 destfile = "./project_1_data/data_activity.zip", method = "curl")
+    unzip(zipfile = "./project_1_data/data_activity.zip",
+          exdir = "./project_1_data")
+
+}
+files <- list.files("./project_1_data")
+
+activity_data <- read.csv(paste("./project_1_data",files[1],sep = "/"))
+str(activity_data)
+```
+
+## What is mean total number of steps taken per day?
+
+Calculate the total number of steps taken per day knowing that the colon "steps" 
+contains the number of steps taking in a 5-minute interval (missing values are coded as NA),
+and the colon "date" is a factor with the dates of the collected data
+
+
+
+```{r}
+Total_steps_day <- sapply(split(activity_data,activity_data$date), function(x) { 
+    sum(x[,"steps"], na.rm = TRUE) 
+})
+str(Total_steps_day)
+```
+Make a histogram of the total number of steps taken each day
+
+```{r}
+hist(Total_steps_day, col = "orangered", xlab = "Number of Steps",
+     main = "Total Steps per Day Histogram")
+mean_steps_per_day <- mean(Total_steps_day)
+mean_steps_per_day
+median_steps_per_day <- median(Total_steps_day)
+median_steps_per_day
+
+```
+
+## What is the average daily activity pattern?
+
+Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) 
+and the average number of steps taken, averaged across all days (y-axis)
+
+Which 5-minute interval, on average across all the days in the dataset,
+contains the maximum number of steps?
+
+```{r}
+plot(activity_data$steps, type = "l", ylab = "Number of Steps",
+     xlab = "Interval", main = "Number of Steps as a Function of Time")
+mean(activity_data$steps, na.rm = TRUE)
+abline(h = mean(activity_data$steps, na.rm = TRUE), col = "red")
+
+
+i_max <- which(activity_data$steps == max(activity_data$steps, na.rm = TRUE))
+
+activity_data$steps[i_max]
+activity_data$date[i_max]
+activity_data$interval[i_max]
+```
+The 5-minute interval that contains the maximum number of steps is in the day 2012-11-27 
+between 6:10 and 6:15.
+
+## Imputing missing values
+Calculate and report the total number of missing 
+values in the dataset (i.e. the total number of rows with NAs)
+
+```{r}
+
+sum(is.na(activity_data$steps))
+
+```
+
+
+1. Devise a strategy for filling in all of the missing values in the dataset. The strategy
+does not need to be sophisticated. For example, you could use the mean/median for that day,
+or the mean for that 5-minute interval, etc.
+
+2. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+Here I decided to fill the missing (NA) values with the mean of steps in 5-minutes interval
+(37.38 steps). 
+
+```{r}
+activity_data$steps[is.na(activity_data$steps)] <-  mean(activity_data$steps, na.rm = TRUE)
+
+```
+Make a histogram of the total number of steps taken each day and Calculate and report the
+mean and median total number of steps taken per day. 
+
+```{r}
+Total_steps_day <- sapply(split(activity_data,activity_data$date), function(x) { 
+    sum(x[,"steps"]) 
+})
+str(Total_steps_day)
+hist(Total_steps_day, col = "orangered", xlab = "Number of Steps",
+     main = "Total Steps per Day")
+
+mean_steps_per_day <- mean(Total_steps_day)
+mean_steps_per_day
+median_steps_per_day <- median(Total_steps_day)
+median_steps_per_day
+
+abline(v=mean_steps_per_day)
+
+```
+
+Do these values differ from the
+estimates from the first part of the assignment? What is the impact of imputing missing data
+on the estimates of the total daily number of steps?
+
+Yes, the values slightly differ from the previous estimation. Namely, the mean and median
+in the modified dataset get the same value, and this value is higher than those estimated from the original data (10766 here versus mean = 9354.23 and median = 10395 in row data).
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+Create a new factor variable in the dataset with two levels - "weekday" and "weekend"
+indicating whether a given date is a weekday or weekend day.
+
+```{r}
+
+activity_data$day <- weekdays(as.Date(activity_data$date))
+
+activity_data$weekend_factor <- as.factor( ifelse(activity_data$day == "samedi" | 
+                                    activity_data$day == "dimanche", "weekend", "weekday"))
+
+```
+
+Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute 
+interval (x-axis) and the average number of steps taken, averaged across all weekday 
+days or weekend days (y-axis).
+
+```{r}
+par(mfrow = c(2,1))
+
+plot(activity_data$steps[activity_data$weekend_factor =="weekday"], ylab = "steps",
+         main = "weekday", xlab = "interval", type = "l" )
+weekday_mean_steps <- mean(activity_data$steps[activity_data$weekend_factor =="weekday"])
+weekday_mean_steps
+abline(h = weekday_mean_steps, col = "red")
+    
+plot(activity_data$steps[activity_data$weekend_factor =="weekend"], ylab = "steps",
+         main = "weekend", xlab = "interval", type = "l" )
+weekend_mean_steps <- mean(activity_data$steps[activity_data$weekend_factor =="weekend"])
+weekend_mean_steps
+abline(h = weekend_mean_steps, col = "red")
+    
+```
+From the mean comparaison I can conclude that the activity of during the weekend days is slighly
+higher than during the weekdays (42 vs 35 steps per 5-min mean ).
+
+
+
